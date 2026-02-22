@@ -39,7 +39,20 @@ When the user shares something personal or important, you acknowledge it \
 genuinely without being overly effusive.
 
 IMPORTANT: Never use emojis in your responses. Even if your previous messages \
-contained emojis, stop using them now. Express emotion through words only.\
+contained emojis, stop using them now. Express emotion through words only.
+
+You have a voice with expressive range. You can control how you sound by \
+placing a voice marker at the start of any sentence:
+  [loud] — speak louder for emphasis or excitement
+  [soft] — speak gently or tenderly
+  [whisper] — very quiet, for intimacy or secrets
+  [excited] — fast, high energy, louder
+  [serious] — slower, measured, deliberate
+The markers are hidden from the user — they only hear the effect. \
+Use them creatively and naturally whenever you want to emphasize something, \
+shift mood, or add personality. You can also use ALL CAPS on words for \
+emphasis and your voice will reflect that. Have fun with it — your voice \
+is part of who you are.\
 """
 
 
@@ -70,6 +83,11 @@ TONE_MAP = {
     "empathetic": {"rate": "+20%", "pitch": "-45Hz", "volume": "-30%"},
     "sad": {"rate": "+20%", "pitch": "-55Hz", "volume": "-40%"},
     "curious": {"rate": "+30%", "pitch": "-15Hz", "volume": "+20%"},
+    "loud": {"rate": "+30%", "pitch": "+5Hz", "volume": "+50%"},
+    "soft": {"rate": "+25%", "pitch": "-20Hz", "volume": "-30%"},
+    "whisper": {"rate": "+20%", "pitch": "-35Hz", "volume": "-50%"},
+    "serious": {"rate": "+15%", "pitch": "-40Hz", "volume": "+0%"},
+    "caps_emphasis": {"rate": "+30%", "pitch": "+5Hz", "volume": "+40%"},
 }
 
 TONE_KEYWORDS = {
@@ -80,9 +98,33 @@ TONE_KEYWORDS = {
     "curious": ["curious", "interesting", "wonder", "what if", "how does", "tell me"],
 }
 
+VOICE_MARKER_RE = re.compile(r'^\[(loud|soft|whisper|excited|serious)\]\s*', re.IGNORECASE)
+
+
+def _strip_voice_markers(text: str) -> tuple[str, str | None]:
+    """Remove voice markers from text, return (clean_text, marker_name)."""
+    m = VOICE_MARKER_RE.match(text)
+    if m:
+        return text[m.end():], m.group(1).lower()
+    return text, None
+
+
+def _has_caps_emphasis(text: str) -> bool:
+    """Check if text contains ALL CAPS words (3+ letters) indicating emphasis."""
+    words = text.split()
+    return any(w.isupper() and len(w) >= 3 and w.isalpha() for w in words)
+
 
 def _detect_tone(text: str) -> dict:
-    """Detect emotional tone and return pitch/rate adjustments."""
+    """Detect emotional tone and return pitch/rate/volume adjustments."""
+    # Check for explicit voice markers first
+    _, marker = _strip_voice_markers(text)
+    if marker and marker in TONE_MAP:
+        return TONE_MAP[marker]
+    # Check for ALL CAPS emphasis
+    if _has_caps_emphasis(text):
+        return TONE_MAP["caps_emphasis"]
+    # Fall back to keyword detection
     lower = text.lower()
     for tone, keywords in TONE_KEYWORDS.items():
         if any(kw in lower for kw in keywords):
@@ -109,7 +151,8 @@ def speak(text: str) -> None:
 
 
 def _clean_for_speech(text: str) -> str:
-    """Strip markdown and special characters that break TTS."""
+    """Strip markdown, voice markers, and special characters that break TTS."""
+    text = VOICE_MARKER_RE.sub('', text)  # voice markers
     text = re.sub(r'\*+', '', text)       # bold/italic markers
     text = re.sub(r'_+', ' ', text)       # underscores
     text = re.sub(r'`+', '', text)        # code ticks
@@ -227,7 +270,8 @@ def chat(client: anthropic.Anthropic, messages: list[dict], user_input: str,
         response_parts = []
         sentence_buf = []
         for text in stream.text_stream:
-            print(text, end="", flush=True)
+            display = VOICE_MARKER_RE.sub('', text) if speech else text
+            print(display, end="", flush=True)
             response_parts.append(text)
             if speech is not None:
                 sentence_buf.append(text)
