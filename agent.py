@@ -219,7 +219,7 @@ def _clean_for_speech(text: str) -> str:
     """Strip markdown, voice markers, and special characters that break TTS."""
     text = VOICE_MARKER_RE.sub('', text)  # voice markers
     text = SOUND_RE.sub('', text)          # sound markers
-    text = re.sub(r'\*+', '', text)       # bold/italic markers
+    text = re.sub(r'\*[^*]+\*', '', text)  # remove *anything between asterisks*
     text = re.sub(r'_+', ' ', text)       # underscores
     text = re.sub(r'`+', '', text)        # code ticks
     text = re.sub(r'#+\s*', '', text)     # headings
