@@ -50,15 +50,42 @@ def save_history(messages: list[dict]) -> None:
 
 VOICE = "en-US-AriaNeural"
 
+TONE_MAP = {
+    "excited": {"rate": "+20%", "pitch": "+8%"},
+    "cheerful": {"rate": "+15%", "pitch": "+5%"},
+    "empathetic": {"rate": "+5%", "pitch": "-3%"},
+    "sad": {"rate": "+5%", "pitch": "-5%"},
+    "curious": {"rate": "+15%", "pitch": "+3%"},
+}
+
+TONE_KEYWORDS = {
+    "excited": ["amazing", "awesome", "fantastic", "incredible", "wow", "exciting", "love it", "great news", "so cool", "wild"],
+    "cheerful": ["glad", "happy", "wonderful", "welcome", "hi ", "hey ", "hello", "good to", "nice"],
+    "empathetic": ["sorry", "understand", "that must", "tough", "difficult", "hard time", "feel for you"],
+    "sad": ["unfortunately", "sadly", "bad news", "heartbreaking", "tragic"],
+    "curious": ["curious", "interesting", "wonder", "what if", "how does", "tell me"],
+}
+
+
+def _detect_tone(text: str) -> dict:
+    """Detect emotional tone and return pitch/rate adjustments."""
+    lower = text.lower()
+    for tone, keywords in TONE_KEYWORDS.items():
+        if any(kw in lower for kw in keywords):
+            return TONE_MAP[tone]
+    return {"rate": "+15%", "pitch": "+0Hz"}
+
 
 def speak(text: str) -> None:
-    """Speak text aloud using edge-tts neural voice."""
+    """Speak text aloud using edge-tts neural voice with emotional inflection."""
     import edge_tts
+
+    tone = _detect_tone(text)
 
     async def _synth():
         with tempfile.NamedTemporaryFile(suffix=".mp3", delete=False) as f:
             tmp = f.name
-        communicate = edge_tts.Communicate(text, VOICE, rate="+15%")
+        communicate = edge_tts.Communicate(text, VOICE, rate=tone["rate"], pitch=tone["pitch"])
         await communicate.save(tmp)
         return tmp
 
