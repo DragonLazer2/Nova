@@ -355,7 +355,7 @@ def chat(client: anthropic.Anthropic, messages: list[dict], user_input: str,
         response_parts = []
         sentence_buf = []
         for text in stream.text_stream:
-            display = SOUND_RE.sub('', VOICE_MARKER_RE.sub('', text)) if speech else text
+            display = SOUND_RE.sub('', VOICE_MARKER_RE.sub('', text))
             print(display, end="", flush=True)
             response_parts.append(text)
             if speech is not None:
@@ -368,7 +368,8 @@ def chat(client: anthropic.Anthropic, messages: list[dict], user_input: str,
             speech.say("".join(sentence_buf))
         print()  # newline after response
 
-    assistant_message = "".join(response_parts)
+    raw_message = "".join(response_parts)
+    assistant_message = SOUND_RE.sub('', VOICE_MARKER_RE.sub('', raw_message)).strip()
     messages.append({"role": "assistant", "content": assistant_message})
     save_history(messages)
 
