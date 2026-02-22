@@ -158,7 +158,7 @@ def listen() -> str | None:
     import speech_recognition as sr
 
     recognizer = sr.Recognizer()
-    recognizer.pause_threshold = 2.0
+    recognizer.pause_threshold = 1.5
     with sr.Microphone() as source:
         print("(Listening...)")
         recognizer.adjust_for_ambient_noise(source, duration=0.5)
