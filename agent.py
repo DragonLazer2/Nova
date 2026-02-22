@@ -5,6 +5,7 @@ import json
 import os
 import queue
 import random
+import re
 import subprocess
 import sys
 import tempfile
@@ -107,20 +108,39 @@ def speak(text: str) -> None:
     os.unlink(tmp)
 
 
-def _synthesize(text: str) -> str:
-    """Synthesize text to a temp mp3 file and return the path."""
+def _clean_for_speech(text: str) -> str:
+    """Strip markdown and special characters that break TTS."""
+    text = re.sub(r'\*+', '', text)       # bold/italic markers
+    text = re.sub(r'_+', ' ', text)       # underscores
+    text = re.sub(r'`+', '', text)        # code ticks
+    text = re.sub(r'#+\s*', '', text)     # headings
+    text = re.sub(r'\[([^\]]+)\]\([^)]+\)', r'\1', text)  # links
+    text = re.sub(r'[~|>{}<]', '', text)  # misc markdown
+    text = re.sub(r'\s+', ' ', text).strip()
+    return text
+
+
+def _synthesize(text: str) -> str | None:
+    """Synthesize text to a temp mp3 file and return the path, or None on failure."""
     import edge_tts
 
-    tone = _detect_tone(text)
+    clean = _clean_for_speech(text)
+    if not clean:
+        return None
+
+    tone = _detect_tone(clean)
 
     async def _synth():
         with tempfile.NamedTemporaryFile(suffix=".mp3", delete=False) as f:
             tmp = f.name
-        communicate = edge_tts.Communicate(text, VOICE, rate=tone["rate"], pitch=tone["pitch"], volume=tone["volume"])
+        communicate = edge_tts.Communicate(clean, VOICE, rate=tone["rate"], pitch=tone["pitch"], volume=tone["volume"])
         await communicate.save(tmp)
         return tmp
 
-    return asyncio.run(_synth())
+    try:
+        return asyncio.run(_synth())
+    except Exception:
+        return None
 
 
 class SpeechQueue:
@@ -144,7 +164,8 @@ class SpeechQueue:
                 self._audio_queue.put(None)
                 break
             tmp = _synthesize(text)
-            self._audio_queue.put(tmp)
+            if tmp is not None:
+                self._audio_queue.put(tmp)
 
     def _play_worker(self):
         """Play audio files as soon as they're ready."""
