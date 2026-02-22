@@ -79,16 +79,16 @@ def save_history(messages: list[dict]) -> None:
 VOICE = "en-US-AriaNeural"
 
 TONE_MAP = {
-    "excited": {"rate": "+35%", "pitch": "+10Hz", "volume": "+50%", "playback_vol": 2.0},
-    "cheerful": {"rate": "+30%", "pitch": "-5Hz", "volume": "+30%", "playback_vol": 1.5},
-    "empathetic": {"rate": "+20%", "pitch": "-45Hz", "volume": "-30%", "playback_vol": 0.5},
-    "sad": {"rate": "+20%", "pitch": "-55Hz", "volume": "-40%", "playback_vol": 0.4},
-    "curious": {"rate": "+30%", "pitch": "-15Hz", "volume": "+20%", "playback_vol": 1.3},
-    "loud": {"rate": "+30%", "pitch": "+5Hz", "volume": "+50%", "playback_vol": 2.5},
-    "soft": {"rate": "+25%", "pitch": "-20Hz", "volume": "-30%", "playback_vol": 0.4},
-    "whisper": {"rate": "+20%", "pitch": "-35Hz", "volume": "-50%", "playback_vol": 0.2},
+    "excited": {"rate": "+35%", "pitch": "+10Hz", "volume": "+50%", "playback_vol": 2.5},
+    "cheerful": {"rate": "+30%", "pitch": "-5Hz", "volume": "+30%", "playback_vol": 1.8},
+    "empathetic": {"rate": "+20%", "pitch": "-45Hz", "volume": "-30%", "playback_vol": 0.3},
+    "sad": {"rate": "+20%", "pitch": "-55Hz", "volume": "-40%", "playback_vol": 0.2},
+    "curious": {"rate": "+30%", "pitch": "-15Hz", "volume": "+20%", "playback_vol": 1.5},
+    "loud": {"rate": "+30%", "pitch": "+5Hz", "volume": "+50%", "playback_vol": 3.0},
+    "soft": {"rate": "+25%", "pitch": "-20Hz", "volume": "-30%", "playback_vol": 0.15},
+    "whisper": {"rate": "+20%", "pitch": "-35Hz", "volume": "-50%", "playback_vol": 0.05},
     "serious": {"rate": "+15%", "pitch": "-40Hz", "volume": "+0%", "playback_vol": 1.0},
-    "caps_emphasis": {"rate": "+30%", "pitch": "+5Hz", "volume": "+50%", "playback_vol": 2.0},
+    "caps_emphasis": {"rate": "+30%", "pitch": "+5Hz", "volume": "+50%", "playback_vol": 2.5},
 }
 
 DEFAULT_TONE = {"rate": "+30%", "pitch": "-30Hz", "volume": "+0%", "playback_vol": 1.0}
