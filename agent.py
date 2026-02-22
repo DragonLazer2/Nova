@@ -64,10 +64,17 @@ submarine, tink, basso, sosumi
   Comedic: rimshot (ba-dum-tss), sad_trombone (wah wah), tada (fanfare), \
 boing (spring), dramatic (dun dun dun), crickets (awkward silence), \
 slide_up, slide_down, record_scratch, ding, whoosh (transition)
+  Laughs: laugh_giggle (quick light giggle), laugh_chuckle (short low chuckle), \
+laugh_hearty (big belly laugh), laugh_nervous (awkward uncertain laugh)
+  Birds: bird_tweet, bird_chirp, bird_songbird (melodic), bird_crow, bird_owl \
+(hoot), bird_seagull, bird_woodpecker (rapid tapping), bird_dove (soft coo)
+  DJ/Vocal: another_one (deep punchy DJ drop hype), vocal_riff (fast melodic vocal run)
 Example: "[sound:rimshot] And that's why I don't trust elevators." \
-or "[sound:dramatic] But there's a twist." or "[sound:tada] You did it!" \
+or "[sound:dramatic] But there's a twist." or "[sound:laugh_hearty] Oh man, that's good." \
+or "[sound:bird_owl] It's getting late." \
 The user hears the sound but doesn't see the marker. Use sounds creatively \
-for comedic timing, scene transitions, punchlines, and dramatic moments.\
+for comedic timing, scene transitions, punchlines, dramatic moments, and atmosphere. \
+Use laughs naturally when something is funny — like a real person would laugh.\
 """
 
 
@@ -150,6 +157,23 @@ AVAILABLE_SOUNDS = {
     "record_scratch": ("custom", "record_scratch.wav"),
     "ding": ("custom", "ding.wav"),
     "whoosh": ("custom", "whoosh.wav"),
+    # Human laughs
+    "laugh_giggle": ("custom", "laugh_giggle.wav"),
+    "laugh_chuckle": ("custom", "laugh_chuckle.wav"),
+    "laugh_hearty": ("custom", "laugh_hearty.wav"),
+    "laugh_nervous": ("custom", "laugh_nervous.wav"),
+    # Bird sounds
+    "bird_tweet": ("custom", "bird_tweet.wav"),
+    "bird_chirp": ("custom", "bird_chirp.wav"),
+    "bird_songbird": ("custom", "bird_songbird.wav"),
+    "bird_crow": ("custom", "bird_crow.wav"),
+    "bird_owl": ("custom", "bird_owl.wav"),
+    "bird_seagull": ("custom", "bird_seagull.wav"),
+    "bird_woodpecker": ("custom", "bird_woodpecker.wav"),
+    "bird_dove": ("custom", "bird_dove.wav"),
+    # DJ / vocal
+    "another_one": ("custom", "another_one.wav"),
+    "vocal_riff": ("custom", "vocal_riff.wav"),
 }
 
 
@@ -355,7 +379,7 @@ def chat(client: anthropic.Anthropic, messages: list[dict], user_input: str,
         response_parts = []
         sentence_buf = []
         for text in stream.text_stream:
-            display = SOUND_RE.sub('', VOICE_MARKER_RE.sub('', text))
+            display = re.sub(r'\*[^*]+\*', '', SOUND_RE.sub('', VOICE_MARKER_RE.sub('', text)))
             print(display, end="", flush=True)
             response_parts.append(text)
             if speech is not None:
@@ -369,7 +393,7 @@ def chat(client: anthropic.Anthropic, messages: list[dict], user_input: str,
         print()  # newline after response
 
     raw_message = "".join(response_parts)
-    assistant_message = SOUND_RE.sub('', VOICE_MARKER_RE.sub('', raw_message)).strip()
+    assistant_message = re.sub(r'\*[^*]+\*', '', SOUND_RE.sub('', VOICE_MARKER_RE.sub('', raw_message))).strip()
     messages.append({"role": "assistant", "content": assistant_message})
     save_history(messages)
 
