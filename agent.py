@@ -1,10 +1,13 @@
 import argparse
+import asyncio
 import anthropic
 import json
 import os
 import queue
+import re
 import subprocess
 import sys
+import tempfile
 import threading
 from datetime import datetime, timezone
 
@@ -44,9 +47,61 @@ def save_history(messages: list[dict]) -> None:
         json.dump(data, f, indent=2)
 
 
+VOICE = "en-US-AriaNeural"
+
+# Aria styles supported by edge-tts
+STYLE_KEYWORDS = {
+    "excited": ["amazing", "awesome", "fantastic", "incredible", "wow", "exciting", "love it", "great news"],
+    "cheerful": ["glad", "happy", "wonderful", "nice", "good to", "welcome", "hi ", "hey ", "hello"],
+    "empathetic": ["sorry", "understand", "that must", "tough", "difficult", "hard time", "feel for you"],
+    "sad": ["unfortunately", "sadly", "bad news", "heartbreaking", "tragic"],
+    "friendly": ["sure thing", "of course", "absolutely", "no problem", "you bet", "let me"],
+}
+
+
+def _detect_style(text: str) -> str | None:
+    """Detect an emotional style from the text content."""
+    lower = text.lower()
+    for style, keywords in STYLE_KEYWORDS.items():
+        if any(kw in lower for kw in keywords):
+            return style
+    return None
+
+
+def _build_ssml(text: str, style: str | None) -> str:
+    """Wrap text in SSML with optional emotional style."""
+    escaped = text.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
+    if style:
+        return (
+            f'<speak xmlns="http://www.w3.org/2001/10/synthesis" '
+            f'xmlns:mstts="http://www.w3.org/2001/mstts" xml:lang="en-US">'
+            f'<voice name="{VOICE}">'
+            f'<mstts:express-as style="{style}">{escaped}</mstts:express-as>'
+            f'</voice></speak>'
+        )
+    return (
+        f'<speak xmlns="http://www.w3.org/2001/10/synthesis" xml:lang="en-US">'
+        f'<voice name="{VOICE}">{escaped}</voice></speak>'
+    )
+
+
 def speak(text: str) -> None:
-    """Speak text aloud using macOS say command."""
-    subprocess.Popen(["say", text]).wait()
+    """Speak text aloud using edge-tts with emotional style detection."""
+    import edge_tts
+
+    style = _detect_style(text)
+    ssml = _build_ssml(text, style)
+
+    async def _synth():
+        with tempfile.NamedTemporaryFile(suffix=".mp3", delete=False) as f:
+            tmp = f.name
+        communicate = edge_tts.Communicate(ssml, VOICE)
+        await communicate.save(tmp)
+        return tmp
+
+    tmp = asyncio.run(_synth())
+    subprocess.Popen(["afplay", tmp]).wait()
+    os.unlink(tmp)
 
 
 class SpeechQueue:
