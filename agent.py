@@ -201,12 +201,20 @@ def speak(text: str) -> None:
     """Speak text aloud using edge-tts neural voice with emotional inflection."""
     import edge_tts
 
+    # Play any sounds first
+    for sound_name in SOUND_RE.findall(text):
+        _play_sound(sound_name)
+
+    clean = _clean_for_speech(text)
+    if not clean:
+        return
+
     tone = _detect_tone(text)
 
     async def _synth():
         with tempfile.NamedTemporaryFile(suffix=".mp3", delete=False) as f:
             tmp = f.name
-        communicate = edge_tts.Communicate(text, VOICE, rate=tone["rate"], pitch=tone["pitch"], volume=tone["volume"])
+        communicate = edge_tts.Communicate(clean, VOICE, rate=tone["rate"], pitch=tone["pitch"], volume=tone["volume"])
         await communicate.save(tmp)
         return tmp
 
@@ -229,16 +237,17 @@ def _clean_for_speech(text: str) -> str:
     return text
 
 
-def _synthesize(text: str) -> tuple[str, float] | None:
-    """Synthesize text to a temp mp3 file. Returns (path, playback_volume) or None."""
+def _synthesize(text: str) -> tuple[str, float, list[str]] | None:
+    """Synthesize text to a temp mp3 file. Returns (path, playback_volume, sounds) or None."""
     import edge_tts
 
-    # Play any sound effects before speaking
-    for sound_name in SOUND_RE.findall(text):
-        _play_sound(sound_name)
+    sounds = SOUND_RE.findall(text)
 
     clean = _clean_for_speech(text)
     if not clean:
+        # Text was only a sound marker with no speech
+        if sounds:
+            return ("", 0, sounds)
         return None
 
     tone = _detect_tone(text)
@@ -251,7 +260,7 @@ def _synthesize(text: str) -> tuple[str, float] | None:
         return tmp
 
     try:
-        return asyncio.run(_synth()), tone["playback_vol"]
+        return asyncio.run(_synth()), tone["playback_vol"], sounds
     except Exception:
         return None
 
@@ -281,14 +290,19 @@ class SpeechQueue:
                 self._audio_queue.put(result)
 
     def _play_worker(self):
-        """Play audio files as soon as they're ready."""
+        """Play sounds then speech in sequence."""
         while True:
             item = self._audio_queue.get()
             if item is None:
                 break
-            tmp, vol = item
-            subprocess.Popen(["afplay", "-v", str(vol), tmp]).wait()
-            os.unlink(tmp)
+            tmp, vol, sounds = item
+            # Play sound effects first
+            for sound_name in sounds:
+                _play_sound(sound_name)
+            # Then speak
+            if tmp:
+                subprocess.Popen(["afplay", "-v", str(vol), tmp]).wait()
+                os.unlink(tmp)
 
     def say(self, sentence: str) -> None:
         """Add a sentence to be spoken."""
