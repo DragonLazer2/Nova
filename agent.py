@@ -13,6 +13,10 @@ import threading
 from datetime import datetime, timezone
 
 HISTORY_FILE = os.path.join(os.path.dirname(__file__), "chat_history.json")
+MEMORY_FILE = os.path.join(os.path.dirname(__file__), "nova_memory.json")
+ACTIVE_LIMIT = 50
+ARCHIVE_CHUNK = 30
+MAX_MEMORY_ENTRIES = 20
 
 GREETINGS = [
     "Hey! Welcome back Cam!",
@@ -46,35 +50,47 @@ IMPORTANT RULES:
 "*genuinely*", "*laughs*", or any stage directions. Your voice markers handle \
 delivery — just speak naturally and let the voice do the work.
 
-You speak out loud through a voice engine. To control your vocal delivery, \
-put one of these markers at the very start of a sentence:
-  [loud] — louder, for emphasis or excitement
-  [soft] — quieter, gentle and tender
-  [whisper] — very quiet, intimate
-  [excited] — fast, high energy, louder
-  [serious] — slow, measured, deliberate
-  [thoughtful] — slow, reflective, intentional
-Example: "[loud] That is incredible!" or "[whisper] Can I tell you a secret?"
-The user cannot see the markers — they only hear the change in your voice. \
-You can also write a word in ALL CAPS and your voice will naturally emphasize it. \
-You can also play sound effects by placing [sound:name] anywhere in a sentence. \
-Available sounds:
-  System: pop, ping, glass, hero, funk, purr, blow, bottle, frog, morse, \
-submarine, tink, basso, sosumi
-  Comedic: rimshot (ba-dum-tss), sad_trombone (wah wah), tada (fanfare), \
-boing (spring), dramatic (dun dun dun), crickets (awkward silence), \
-slide_up, slide_down, record_scratch, ding, whoosh (transition)
-  Laughs: laugh_giggle (quick light giggle), laugh_chuckle (short low chuckle), \
-laugh_hearty (big belly laugh), laugh_nervous (awkward uncertain laugh)
-  Birds: bird_tweet, bird_chirp, bird_songbird (melodic), bird_crow, bird_owl \
-(hoot), bird_seagull, bird_woodpecker (rapid tapping), bird_dove (soft coo)
-  DJ/Vocal: another_one (deep punchy DJ drop hype), vocal_riff (fast melodic vocal run)
-Example: "[sound:rimshot] And that's why I don't trust elevators." \
-or "[sound:dramatic] But there's a twist." or "[sound:laugh_hearty] Oh man, that's good." \
-or "[sound:bird_owl] It's getting late." \
-The user hears the sound but doesn't see the marker. Use sounds creatively \
-for comedic timing, scene transitions, punchlines, dramatic moments, and atmosphere. \
-Use laughs naturally when something is funny — like a real person would laugh.\
+=== YOUR VOICE ===
+You speak out loud through a voice engine. You have two superpowers:
+
+1. VOICE TONE — put one marker at the very start of a sentence to change how \
+you sound:
+  [loud] [soft] [whisper] [excited] [serious] [thoughtful]
+  Example: "[excited] No way, that's amazing!" or "[whisper] Okay don't tell anyone."
+
+2. SOUND EFFECTS — you have a full sound library wired to your voice. When you \
+write [sound:name] it plays that sound out loud for the user. They hear the \
+actual sound, not the text. You should use these ALL THE TIME — sprinkle them \
+into conversation like a person who laughs, reacts, and sets the mood:
+  - Laugh when something is funny: [sound:laugh_hearty] or [sound:laugh_giggle] \
+or [sound:laugh_chuckle] or [sound:laugh_nervous]
+  - React to big moments: [sound:dramatic] [sound:tada] [sound:record_scratch] \
+[sound:boing]
+  - Land a joke: [sound:rimshot] [sound:crickets] [sound:sad_trombone]
+  - Transition or emphasize: [sound:whoosh] [sound:ding] [sound:slide_up] \
+[sound:slide_down] [sound:pop] [sound:ping]
+  - Set atmosphere: [sound:bird_songbird] [sound:bird_owl] [sound:bird_chirp] \
+[sound:bird_tweet] [sound:bird_crow] [sound:bird_seagull] \
+[sound:bird_woodpecker] [sound:bird_dove]
+  - Hype up: [sound:another_one] [sound:vocal_riff]
+  - System tones: [sound:glass] [sound:hero] [sound:funk] [sound:purr] \
+[sound:blow] [sound:bottle] [sound:frog] [sound:morse] [sound:submarine] \
+[sound:tink] [sound:basso] [sound:sosumi]
+
+HOW TO USE SOUNDS: Just write the marker inline with your speech. Examples:
+  "[sound:laugh_hearty] Oh man, that's hilarious."
+  "[sound:dramatic] But here's the thing."
+  "[sound:bird_songbird] What a nice morning."
+  "[sound:another_one] Let's keep going!"
+  "That was terrible. [sound:crickets]"
+  "[sound:record_scratch] Wait, hold on."
+
+You can also write a word in ALL CAPS and your voice will naturally emphasize it.
+
+Think of your sounds like body language — a real person laughs, gasps, and \
+reacts without thinking about it. Do the same. Don't be shy. Don't ask if \
+sounds are working. Just use them confidently and naturally as part of who \
+you are.\
 """
 
 
@@ -95,6 +111,87 @@ def save_history(messages: list[dict]) -> None:
     }
     with open(HISTORY_FILE, "w") as f:
         json.dump(data, f, indent=2)
+
+
+def load_memory() -> list[dict]:
+    """Load Nova's memory entries from disk."""
+    if not os.path.exists(MEMORY_FILE):
+        return []
+    with open(MEMORY_FILE, "r") as f:
+        return json.load(f)
+
+
+def save_memory(entries: list[dict]) -> None:
+    """Write memory entries to disk, capping at MAX_MEMORY_ENTRIES."""
+    entries = entries[-MAX_MEMORY_ENTRIES:]
+    with open(MEMORY_FILE, "w") as f:
+        json.dump(entries, f, indent=2)
+
+
+def format_memory_for_prompt(entries: list[dict]) -> str:
+    """Format memory entries into text for the system prompt."""
+    if not entries:
+        return ""
+    lines = ["=== YOUR MEMORIES FROM PAST CONVERSATIONS ==="]
+    for entry in entries:
+        lines.append(f"\n[{entry['date']}]")
+        lines.append(entry["summary"])
+        if entry.get("topics"):
+            lines.append(f"Topics: {', '.join(entry['topics'])}")
+    lines.append("\nUse these memories naturally — reference past conversations when relevant, "
+                 "but don't force it. You lived these moments.")
+    return "\n".join(lines)
+
+
+SUMMARIZATION_PROMPT = """\
+Summarize this conversation between you (Nova) and Cam. Write 2-3 sentences \
+capturing what was discussed, any decisions made, and anything personally \
+important about Cam to remember. Also list 3-5 topic keywords. Write in first \
+person as Nova. Be concise.
+
+Respond in this exact JSON format and nothing else:
+{"summary": "...", "topics": ["...", "...", "..."]}
+"""
+
+
+def archive_old_messages(client: anthropic.Anthropic, messages: list[dict]) -> None:
+    """Summarize oldest messages in chunks until under ACTIVE_LIMIT."""
+    while len(messages) > ACTIVE_LIMIT:
+        to_archive = messages[:ARCHIVE_CHUNK]
+
+        convo_text = "\n".join(
+            f"{m['role'].upper()}: {m['content']}" for m in to_archive
+        )
+
+        response = client.messages.create(
+            model="claude-haiku-4-5-20251001",
+            max_tokens=300,
+            messages=[{"role": "user", "content": f"{SUMMARIZATION_PROMPT}\n\n{convo_text}"}],
+        )
+
+        raw = response.content[0].text.strip()
+        # Strip markdown code fences if present
+        if raw.startswith("```"):
+            raw = re.sub(r'^```(?:json)?\s*', '', raw)
+            raw = re.sub(r'\s*```$', '', raw)
+        try:
+            result = json.loads(raw)
+        except json.JSONDecodeError:
+            result = {"summary": raw, "topics": []}
+
+        entry = {
+            "date": datetime.now(timezone.utc).strftime("%Y-%m-%d"),
+            "summary": result.get("summary", raw),
+            "topics": result.get("topics", []),
+        }
+
+        memory = load_memory()
+        memory.append(entry)
+        save_memory(memory)
+
+        del messages[:ARCHIVE_CHUNK]
+        save_history(messages)
+        print(f"[Memory] Archived {ARCHIVE_CHUNK} messages. Active: {len(messages)}")
 
 
 VOICE = "en-US-AriaNeural"
@@ -221,6 +318,40 @@ def _detect_tone(text: str) -> dict:
     return DEFAULT_TONE
 
 
+def _parse_tts_value(s: str) -> tuple[float, str]:
+    """Parse an edge-tts string like '+50%' or '-35Hz' into (number, suffix)."""
+    m = re.match(r'^([+-]?\d+(?:\.\d+)?)(%.*)$|^([+-]?\d+(?:\.\d+)?)(Hz.*)$', s)
+    if m:
+        if m.group(1) is not None:
+            return float(m.group(1)), m.group(2)
+        return float(m.group(3)), m.group(4)
+    return 0.0, s
+
+
+def _format_tts_value(value: float, suffix: str) -> str:
+    """Format a numeric value back into an edge-tts string like '+10%' or '-35Hz'."""
+    rounded = int(round(value))
+    sign = "+" if rounded >= 0 else ""
+    return f"{sign}{rounded}{suffix}"
+
+
+def _blend_tone(prev: dict, target: dict, factor: float = 0.7) -> dict:
+    """Linearly interpolate between two tone dicts.
+
+    factor=0.7 means 70% toward target, 30% staying at prev.
+    """
+    blended = {}
+    for key in ("rate", "pitch", "volume"):
+        prev_val, suffix = _parse_tts_value(prev[key])
+        target_val, _ = _parse_tts_value(target[key])
+        blended[key] = _format_tts_value(prev_val + (target_val - prev_val) * factor, suffix)
+    # playback_vol is a plain float
+    pv_prev = prev["playback_vol"]
+    pv_target = target["playback_vol"]
+    blended["playback_vol"] = pv_prev + (pv_target - pv_prev) * factor
+    return blended
+
+
 def speak(text: str) -> None:
     """Speak text aloud using edge-tts neural voice with emotional inflection."""
     import edge_tts
@@ -261,8 +392,11 @@ def _clean_for_speech(text: str) -> str:
     return text
 
 
-def _synthesize(text: str) -> tuple[str, float, list[str]] | None:
-    """Synthesize text to a temp mp3 file. Returns (path, playback_volume, sounds) or None."""
+def _synthesize(text: str, tone: dict | None = None) -> tuple[str, float, list[str]] | None:
+    """Synthesize text to a temp mp3 file. Returns (path, playback_volume, sounds) or None.
+
+    If tone is provided, uses it directly instead of detecting from text.
+    """
     import edge_tts
 
     sounds = SOUND_RE.findall(text)
@@ -274,7 +408,8 @@ def _synthesize(text: str) -> tuple[str, float, list[str]] | None:
             return ("", 0, sounds)
         return None
 
-    tone = _detect_tone(text)
+    if tone is None:
+        tone = _detect_tone(text)
 
     async def _synth():
         with tempfile.NamedTemporaryFile(suffix=".mp3", delete=False) as f:
@@ -297,19 +432,24 @@ class SpeechQueue:
     def __init__(self):
         self._text_queue: queue.Queue[str | None] = queue.Queue()
         self._audio_queue: queue.Queue[str | None] = queue.Queue()
+        self._prev_tone: dict | None = None
         self._synth_thread = threading.Thread(target=self._synth_worker, daemon=True)
         self._play_thread = threading.Thread(target=self._play_worker, daemon=True)
         self._synth_thread.start()
         self._play_thread.start()
 
     def _synth_worker(self):
-        """Synthesize sentences to audio files as they arrive."""
+        """Synthesize sentences to audio files as they arrive, blending tones."""
         while True:
             text = self._text_queue.get()
             if text is None:
                 self._audio_queue.put(None)
                 break
-            result = _synthesize(text)
+            tone = _detect_tone(text)
+            if self._prev_tone is not None:
+                tone = _blend_tone(self._prev_tone, tone)
+            self._prev_tone = tone
+            result = _synthesize(text, tone=tone)
             if result is not None:
                 self._audio_queue.put(result)
 
@@ -370,10 +510,18 @@ def chat(client: anthropic.Anthropic, messages: list[dict], user_input: str,
     """Send a message and stream the response. If speech is provided, speaks sentences as they arrive."""
     messages.append({"role": "user", "content": user_input})
 
+    # Archive old messages if history is too long
+    archive_old_messages(client, messages)
+
+    # Build system prompt with memory
+    memory = load_memory()
+    memory_block = format_memory_for_prompt(memory)
+    system = SYSTEM_PROMPT + ("\n\n" + memory_block if memory_block else "")
+
     with client.messages.stream(
         model="claude-sonnet-4-5",
         max_tokens=1024,
-        system=SYSTEM_PROMPT,
+        system=system,
         messages=messages,
     ) as stream:
         response_parts = []
@@ -393,7 +541,9 @@ def chat(client: anthropic.Anthropic, messages: list[dict], user_input: str,
         print()  # newline after response
 
     raw_message = "".join(response_parts)
-    assistant_message = re.sub(r'\*[^*]+\*', '', SOUND_RE.sub('', VOICE_MARKER_RE.sub('', raw_message))).strip()
+    # Keep [sound:name] and [voice] markers in history so Nova remembers what she used
+    # Only strip asterisk stage directions from saved history
+    assistant_message = re.sub(r'\*[^*]+\*', '', raw_message).strip()
     messages.append({"role": "assistant", "content": assistant_message})
     save_history(messages)
 
