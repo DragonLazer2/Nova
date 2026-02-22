@@ -25,7 +25,7 @@ occasionally.
 When the user shares something personal or important, you acknowledge it \
 genuinely without being overly effusive.
 
-Never use emojis in your responses.\
+Never use emojis in your responses. This is a strict rule — no emojis whatsoever.\
 """
 
 
@@ -51,11 +51,11 @@ def save_history(messages: list[dict]) -> None:
 VOICE = "en-US-AriaNeural"
 
 TONE_MAP = {
-    "excited": {"rate": "+20%", "pitch": "+8%"},
-    "cheerful": {"rate": "+15%", "pitch": "+5%"},
-    "empathetic": {"rate": "+5%", "pitch": "-3%"},
-    "sad": {"rate": "+5%", "pitch": "-5%"},
-    "curious": {"rate": "+15%", "pitch": "+3%"},
+    "excited": {"rate": "+35%", "pitch": "+8%"},
+    "cheerful": {"rate": "+30%", "pitch": "+5%"},
+    "empathetic": {"rate": "+20%", "pitch": "-3%"},
+    "sad": {"rate": "+20%", "pitch": "-5%"},
+    "curious": {"rate": "+30%", "pitch": "+3%"},
 }
 
 TONE_KEYWORDS = {
@@ -73,7 +73,7 @@ def _detect_tone(text: str) -> dict:
     for tone, keywords in TONE_KEYWORDS.items():
         if any(kw in lower for kw in keywords):
             return TONE_MAP[tone]
-    return {"rate": "+15%", "pitch": "+0Hz"}
+    return {"rate": "+30%", "pitch": "+0Hz"}
 
 
 def speak(text: str) -> None:
