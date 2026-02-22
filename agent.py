@@ -51,11 +51,11 @@ def save_history(messages: list[dict]) -> None:
 VOICE = "en-US-AriaNeural"
 
 TONE_MAP = {
-    "excited": {"rate": "+35%", "pitch": "+40Hz"},
-    "cheerful": {"rate": "+30%", "pitch": "+25Hz"},
-    "empathetic": {"rate": "+20%", "pitch": "-15Hz"},
-    "sad": {"rate": "+20%", "pitch": "-25Hz"},
-    "curious": {"rate": "+30%", "pitch": "+15Hz"},
+    "excited": {"rate": "+35%", "pitch": "+10Hz"},
+    "cheerful": {"rate": "+30%", "pitch": "-5Hz"},
+    "empathetic": {"rate": "+20%", "pitch": "-45Hz"},
+    "sad": {"rate": "+20%", "pitch": "-55Hz"},
+    "curious": {"rate": "+30%", "pitch": "-15Hz"},
 }
 
 TONE_KEYWORDS = {
@@ -73,7 +73,7 @@ def _detect_tone(text: str) -> dict:
     for tone, keywords in TONE_KEYWORDS.items():
         if any(kw in lower for kw in keywords):
             return TONE_MAP[tone]
-    return {"rate": "+30%", "pitch": "+0Hz"}
+    return {"rate": "+30%", "pitch": "-30Hz"}
 
 
 def speak(text: str) -> None:
