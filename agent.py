@@ -51,11 +51,11 @@ def save_history(messages: list[dict]) -> None:
 VOICE = "en-US-AriaNeural"
 
 TONE_MAP = {
-    "excited": {"rate": "+35%", "pitch": "+8%"},
-    "cheerful": {"rate": "+30%", "pitch": "+5%"},
-    "empathetic": {"rate": "+20%", "pitch": "-3%"},
-    "sad": {"rate": "+20%", "pitch": "-5%"},
-    "curious": {"rate": "+30%", "pitch": "+3%"},
+    "excited": {"rate": "+35%", "pitch": "+40Hz"},
+    "cheerful": {"rate": "+30%", "pitch": "+25Hz"},
+    "empathetic": {"rate": "+20%", "pitch": "-15Hz"},
+    "sad": {"rate": "+20%", "pitch": "-25Hz"},
+    "curious": {"rate": "+30%", "pitch": "+15Hz"},
 }
 
 TONE_KEYWORDS = {
