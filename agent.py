@@ -54,7 +54,12 @@ put one of these markers at the very start of a sentence:
 Example: "[loud] That is incredible!" or "[whisper] Can I tell you a secret?"
 The user cannot see the markers — they only hear the change in your voice. \
 You can also write a word in ALL CAPS and your voice will naturally emphasize it. \
-Use these tools creatively. Your voice is part of who you are.\
+You can also play sound effects by placing [sound:name] anywhere in a sentence. \
+Available sounds: pop, ping, glass, hero, funk, purr, blow, bottle, frog, \
+morse, submarine, tink, basso, sosumi. \
+Example: "[sound:pop] That was a great idea!" or "Let me think... [sound:ping] Got it!" \
+The user hears the sound but doesn't see the marker. Use sounds sparingly and \
+creatively — a pop for a punchline, a ping for an idea, a hero for a big moment.\
 """
 
 
@@ -104,7 +109,34 @@ TONE_KEYWORDS = {
     "thoughtful": ["let me think", "consider", "reflect", "to clarify", "in other words", "what i mean", "put it this way", "the thing is", "here's the nuance"],
 }
 
-VOICE_MARKER_RE = re.compile(r'^\[(loud|soft|whisper|excited|serious)\]\s*', re.IGNORECASE)
+VOICE_MARKER_RE = re.compile(r'^\[(loud|soft|whisper|excited|serious|thoughtful)\]\s*', re.IGNORECASE)
+
+SOUNDS_DIR = "/System/Library/Sounds"
+SOUND_RE = re.compile(r'\[sound:(\w+)\]', re.IGNORECASE)
+AVAILABLE_SOUNDS = {
+    "pop": "Pop.aiff",
+    "ping": "Ping.aiff",
+    "glass": "Glass.aiff",
+    "hero": "Hero.aiff",
+    "funk": "Funk.aiff",
+    "purr": "Purr.aiff",
+    "blow": "Blow.aiff",
+    "bottle": "Bottle.aiff",
+    "frog": "Frog.aiff",
+    "morse": "Morse.aiff",
+    "submarine": "Submarine.aiff",
+    "tink": "Tink.aiff",
+    "basso": "Basso.aiff",
+    "sosumi": "Sosumi.aiff",
+}
+
+
+def _play_sound(name: str) -> None:
+    """Play a macOS system sound by name."""
+    filename = AVAILABLE_SOUNDS.get(name.lower())
+    if filename:
+        path = os.path.join(SOUNDS_DIR, filename)
+        subprocess.Popen(["afplay", path]).wait()
 
 
 def _strip_voice_markers(text: str) -> tuple[str, str | None]:
@@ -159,6 +191,7 @@ def speak(text: str) -> None:
 def _clean_for_speech(text: str) -> str:
     """Strip markdown, voice markers, and special characters that break TTS."""
     text = VOICE_MARKER_RE.sub('', text)  # voice markers
+    text = SOUND_RE.sub('', text)          # sound markers
     text = re.sub(r'\*+', '', text)       # bold/italic markers
     text = re.sub(r'_+', ' ', text)       # underscores
     text = re.sub(r'`+', '', text)        # code ticks
@@ -172,6 +205,10 @@ def _clean_for_speech(text: str) -> str:
 def _synthesize(text: str) -> tuple[str, float] | None:
     """Synthesize text to a temp mp3 file. Returns (path, playback_volume) or None."""
     import edge_tts
+
+    # Play any sound effects before speaking
+    for sound_name in SOUND_RE.findall(text):
+        _play_sound(sound_name)
 
     clean = _clean_for_speech(text)
     if not clean:
@@ -277,7 +314,7 @@ def chat(client: anthropic.Anthropic, messages: list[dict], user_input: str,
         response_parts = []
         sentence_buf = []
         for text in stream.text_stream:
-            display = VOICE_MARKER_RE.sub('', text) if speech else text
+            display = SOUND_RE.sub('', VOICE_MARKER_RE.sub('', text)) if speech else text
             print(display, end="", flush=True)
             response_parts.append(text)
             if speech is not None:
