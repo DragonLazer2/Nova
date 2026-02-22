@@ -50,6 +50,7 @@ put one of these markers at the very start of a sentence:
   [whisper] — very quiet, intimate
   [excited] — fast, high energy, louder
   [serious] — slow, measured, deliberate
+  [thoughtful] — slow, reflective, intentional
 Example: "[loud] That is incredible!" or "[whisper] Can I tell you a secret?"
 The user cannot see the markers — they only hear the change in your voice. \
 You can also write a word in ALL CAPS and your voice will naturally emphasize it. \
@@ -79,16 +80,17 @@ def save_history(messages: list[dict]) -> None:
 VOICE = "en-US-AriaNeural"
 
 TONE_MAP = {
-    "excited": {"rate": "+35%", "pitch": "+10Hz", "volume": "+50%", "playback_vol": 2.5},
-    "cheerful": {"rate": "+30%", "pitch": "-5Hz", "volume": "+30%", "playback_vol": 1.8},
-    "empathetic": {"rate": "+20%", "pitch": "-45Hz", "volume": "-30%", "playback_vol": 0.3},
-    "sad": {"rate": "+20%", "pitch": "-55Hz", "volume": "-40%", "playback_vol": 0.2},
+    "excited": {"rate": "+50%", "pitch": "+10Hz", "volume": "+50%", "playback_vol": 2.5},
+    "cheerful": {"rate": "+35%", "pitch": "-5Hz", "volume": "+30%", "playback_vol": 1.8},
+    "empathetic": {"rate": "+10%", "pitch": "-45Hz", "volume": "-30%", "playback_vol": 0.3},
+    "sad": {"rate": "+5%", "pitch": "-55Hz", "volume": "-40%", "playback_vol": 0.2},
     "curious": {"rate": "+30%", "pitch": "-15Hz", "volume": "+20%", "playback_vol": 1.5},
-    "loud": {"rate": "+30%", "pitch": "+5Hz", "volume": "+50%", "playback_vol": 3.0},
-    "soft": {"rate": "+25%", "pitch": "-20Hz", "volume": "-30%", "playback_vol": 0.15},
-    "whisper": {"rate": "+20%", "pitch": "-35Hz", "volume": "-50%", "playback_vol": 0.05},
-    "serious": {"rate": "+15%", "pitch": "-40Hz", "volume": "+0%", "playback_vol": 1.0},
-    "caps_emphasis": {"rate": "+30%", "pitch": "+5Hz", "volume": "+50%", "playback_vol": 2.5},
+    "loud": {"rate": "+45%", "pitch": "+5Hz", "volume": "+50%", "playback_vol": 3.0},
+    "soft": {"rate": "+15%", "pitch": "-20Hz", "volume": "-30%", "playback_vol": 0.15},
+    "whisper": {"rate": "+10%", "pitch": "-35Hz", "volume": "-50%", "playback_vol": 0.05},
+    "serious": {"rate": "+0%", "pitch": "-40Hz", "volume": "+0%", "playback_vol": 1.0},
+    "caps_emphasis": {"rate": "+45%", "pitch": "+5Hz", "volume": "+50%", "playback_vol": 2.5},
+    "thoughtful": {"rate": "+0%", "pitch": "-30Hz", "volume": "-10%", "playback_vol": 0.8},
 }
 
 DEFAULT_TONE = {"rate": "+30%", "pitch": "-30Hz", "volume": "+0%", "playback_vol": 1.0}
@@ -99,6 +101,7 @@ TONE_KEYWORDS = {
     "empathetic": ["sorry", "understand", "that must", "tough", "difficult", "hard time", "feel for you"],
     "sad": ["unfortunately", "sadly", "bad news", "heartbreaking", "tragic"],
     "curious": ["curious", "interesting", "wonder", "what if", "how does", "tell me"],
+    "thoughtful": ["let me think", "consider", "reflect", "to clarify", "in other words", "what i mean", "put it this way", "the thing is", "here's the nuance"],
 }
 
 VOICE_MARKER_RE = re.compile(r'^\[(loud|soft|whisper|excited|serious)\]\s*', re.IGNORECASE)
