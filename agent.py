@@ -58,11 +58,16 @@ Example: "[loud] That is incredible!" or "[whisper] Can I tell you a secret?"
 The user cannot see the markers — they only hear the change in your voice. \
 You can also write a word in ALL CAPS and your voice will naturally emphasize it. \
 You can also play sound effects by placing [sound:name] anywhere in a sentence. \
-Available sounds: pop, ping, glass, hero, funk, purr, blow, bottle, frog, \
-morse, submarine, tink, basso, sosumi. \
-Example: "[sound:pop] That was a great idea!" or "Let me think... [sound:ping] Got it!" \
-The user hears the sound but doesn't see the marker. Use sounds sparingly and \
-creatively — a pop for a punchline, a ping for an idea, a hero for a big moment.\
+Available sounds:
+  System: pop, ping, glass, hero, funk, purr, blow, bottle, frog, morse, \
+submarine, tink, basso, sosumi
+  Comedic: rimshot (ba-dum-tss), sad_trombone (wah wah), tada (fanfare), \
+boing (spring), dramatic (dun dun dun), crickets (awkward silence), \
+slide_up, slide_down, record_scratch, ding, whoosh (transition)
+Example: "[sound:rimshot] And that's why I don't trust elevators." \
+or "[sound:dramatic] But there's a twist." or "[sound:tada] You did it!" \
+The user hears the sound but doesn't see the marker. Use sounds creatively \
+for comedic timing, scene transitions, punchlines, and dramatic moments.\
 """
 
 
@@ -114,32 +119,51 @@ TONE_KEYWORDS = {
 
 VOICE_MARKER_RE = re.compile(r'^\[(loud|soft|whisper|excited|serious|thoughtful)\]\s*', re.IGNORECASE)
 
-SOUNDS_DIR = "/System/Library/Sounds"
+SYSTEM_SOUNDS_DIR = "/System/Library/Sounds"
+CUSTOM_SOUNDS_DIR = os.path.join(os.path.dirname(__file__), "sounds")
 SOUND_RE = re.compile(r'\[sound:(\w+)\]', re.IGNORECASE)
 AVAILABLE_SOUNDS = {
-    "pop": "Pop.aiff",
-    "ping": "Ping.aiff",
-    "glass": "Glass.aiff",
-    "hero": "Hero.aiff",
-    "funk": "Funk.aiff",
-    "purr": "Purr.aiff",
-    "blow": "Blow.aiff",
-    "bottle": "Bottle.aiff",
-    "frog": "Frog.aiff",
-    "morse": "Morse.aiff",
-    "submarine": "Submarine.aiff",
-    "tink": "Tink.aiff",
-    "basso": "Basso.aiff",
-    "sosumi": "Sosumi.aiff",
+    # macOS system sounds
+    "pop": ("system", "Pop.aiff"),
+    "ping": ("system", "Ping.aiff"),
+    "glass": ("system", "Glass.aiff"),
+    "hero": ("system", "Hero.aiff"),
+    "funk": ("system", "Funk.aiff"),
+    "purr": ("system", "Purr.aiff"),
+    "blow": ("system", "Blow.aiff"),
+    "bottle": ("system", "Bottle.aiff"),
+    "frog": ("system", "Frog.aiff"),
+    "morse": ("system", "Morse.aiff"),
+    "submarine": ("system", "Submarine.aiff"),
+    "tink": ("system", "Tink.aiff"),
+    "basso": ("system", "Basso.aiff"),
+    "sosumi": ("system", "Sosumi.aiff"),
+    # Comedic / sitcom sounds
+    "rimshot": ("custom", "rimshot.wav"),
+    "sad_trombone": ("custom", "sad_trombone.wav"),
+    "tada": ("custom", "tada.wav"),
+    "boing": ("custom", "boing.wav"),
+    "dramatic": ("custom", "dramatic.wav"),
+    "crickets": ("custom", "crickets.wav"),
+    "slide_up": ("custom", "slide_up.wav"),
+    "slide_down": ("custom", "slide_down.wav"),
+    "record_scratch": ("custom", "record_scratch.wav"),
+    "ding": ("custom", "ding.wav"),
+    "whoosh": ("custom", "whoosh.wav"),
 }
 
 
 def _play_sound(name: str) -> None:
-    """Play a macOS system sound by name."""
-    filename = AVAILABLE_SOUNDS.get(name.lower())
-    if filename:
-        path = os.path.join(SOUNDS_DIR, filename)
-        subprocess.Popen(["afplay", path]).wait()
+    """Play a sound effect by name."""
+    entry = AVAILABLE_SOUNDS.get(name.lower())
+    if entry:
+        source, filename = entry
+        if source == "system":
+            path = os.path.join(SYSTEM_SOUNDS_DIR, filename)
+        else:
+            path = os.path.join(CUSTOM_SOUNDS_DIR, filename)
+        if os.path.exists(path):
+            subprocess.Popen(["afplay", path]).wait()
 
 
 def _strip_voice_markers(text: str) -> tuple[str, str | None]:
