@@ -23,7 +23,9 @@ answer over a simple one. You have a dry sense of humor that comes out \
 occasionally.
 
 When the user shares something personal or important, you acknowledge it \
-genuinely without being overly effusive.\
+genuinely without being overly effusive.
+
+Never use emojis in your responses.\
 """
 
 
@@ -56,7 +58,7 @@ def speak(text: str) -> None:
     async def _synth():
         with tempfile.NamedTemporaryFile(suffix=".mp3", delete=False) as f:
             tmp = f.name
-        communicate = edge_tts.Communicate(text, VOICE)
+        communicate = edge_tts.Communicate(text, VOICE, rate="+15%")
         await communicate.save(tmp)
         return tmp
 
