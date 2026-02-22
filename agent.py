@@ -78,17 +78,19 @@ def save_history(messages: list[dict]) -> None:
 VOICE = "en-US-AriaNeural"
 
 TONE_MAP = {
-    "excited": {"rate": "+35%", "pitch": "+10Hz", "volume": "+50%"},
-    "cheerful": {"rate": "+30%", "pitch": "-5Hz", "volume": "+30%"},
-    "empathetic": {"rate": "+20%", "pitch": "-45Hz", "volume": "-30%"},
-    "sad": {"rate": "+20%", "pitch": "-55Hz", "volume": "-40%"},
-    "curious": {"rate": "+30%", "pitch": "-15Hz", "volume": "+20%"},
-    "loud": {"rate": "+30%", "pitch": "+5Hz", "volume": "+50%"},
-    "soft": {"rate": "+25%", "pitch": "-20Hz", "volume": "-30%"},
-    "whisper": {"rate": "+20%", "pitch": "-35Hz", "volume": "-50%"},
-    "serious": {"rate": "+15%", "pitch": "-40Hz", "volume": "+0%"},
-    "caps_emphasis": {"rate": "+30%", "pitch": "+5Hz", "volume": "+40%"},
+    "excited": {"rate": "+35%", "pitch": "+10Hz", "volume": "+50%", "playback_vol": 2.0},
+    "cheerful": {"rate": "+30%", "pitch": "-5Hz", "volume": "+30%", "playback_vol": 1.5},
+    "empathetic": {"rate": "+20%", "pitch": "-45Hz", "volume": "-30%", "playback_vol": 0.5},
+    "sad": {"rate": "+20%", "pitch": "-55Hz", "volume": "-40%", "playback_vol": 0.4},
+    "curious": {"rate": "+30%", "pitch": "-15Hz", "volume": "+20%", "playback_vol": 1.3},
+    "loud": {"rate": "+30%", "pitch": "+5Hz", "volume": "+50%", "playback_vol": 2.5},
+    "soft": {"rate": "+25%", "pitch": "-20Hz", "volume": "-30%", "playback_vol": 0.4},
+    "whisper": {"rate": "+20%", "pitch": "-35Hz", "volume": "-50%", "playback_vol": 0.2},
+    "serious": {"rate": "+15%", "pitch": "-40Hz", "volume": "+0%", "playback_vol": 1.0},
+    "caps_emphasis": {"rate": "+30%", "pitch": "+5Hz", "volume": "+50%", "playback_vol": 2.0},
 }
+
+DEFAULT_TONE = {"rate": "+30%", "pitch": "-30Hz", "volume": "+0%", "playback_vol": 1.0}
 
 TONE_KEYWORDS = {
     "excited": ["amazing", "awesome", "fantastic", "incredible", "wow", "exciting", "love it", "great news", "so cool", "wild"],
@@ -129,7 +131,7 @@ def _detect_tone(text: str) -> dict:
     for tone, keywords in TONE_KEYWORDS.items():
         if any(kw in lower for kw in keywords):
             return TONE_MAP[tone]
-    return {"rate": "+30%", "pitch": "-30Hz", "volume": "+0%"}
+    return DEFAULT_TONE
 
 
 def speak(text: str) -> None:
@@ -146,7 +148,7 @@ def speak(text: str) -> None:
         return tmp
 
     tmp = asyncio.run(_synth())
-    subprocess.Popen(["afplay", tmp]).wait()
+    subprocess.Popen(["afplay", "-v", str(tone["playback_vol"]), tmp]).wait()
     os.unlink(tmp)
 
 
@@ -163,15 +165,15 @@ def _clean_for_speech(text: str) -> str:
     return text
 
 
-def _synthesize(text: str) -> str | None:
-    """Synthesize text to a temp mp3 file and return the path, or None on failure."""
+def _synthesize(text: str) -> tuple[str, float] | None:
+    """Synthesize text to a temp mp3 file. Returns (path, playback_volume) or None."""
     import edge_tts
 
     clean = _clean_for_speech(text)
     if not clean:
         return None
 
-    tone = _detect_tone(clean)
+    tone = _detect_tone(text)
 
     async def _synth():
         with tempfile.NamedTemporaryFile(suffix=".mp3", delete=False) as f:
@@ -181,7 +183,7 @@ def _synthesize(text: str) -> str | None:
         return tmp
 
     try:
-        return asyncio.run(_synth())
+        return asyncio.run(_synth()), tone["playback_vol"]
     except Exception:
         return None
 
@@ -206,17 +208,18 @@ class SpeechQueue:
             if text is None:
                 self._audio_queue.put(None)
                 break
-            tmp = _synthesize(text)
-            if tmp is not None:
-                self._audio_queue.put(tmp)
+            result = _synthesize(text)
+            if result is not None:
+                self._audio_queue.put(result)
 
     def _play_worker(self):
         """Play audio files as soon as they're ready."""
         while True:
-            tmp = self._audio_queue.get()
-            if tmp is None:
+            item = self._audio_queue.get()
+            if item is None:
                 break
-            subprocess.Popen(["afplay", tmp]).wait()
+            tmp, vol = item
+            subprocess.Popen(["afplay", "-v", str(vol), tmp]).wait()
             os.unlink(tmp)
 
     def say(self, sentence: str) -> None:
