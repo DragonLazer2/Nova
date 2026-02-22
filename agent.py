@@ -94,31 +94,63 @@ def speak(text: str) -> None:
     os.unlink(tmp)
 
 
-class SpeechQueue:
-    """Queues sentence chunks and speaks them in a background thread."""
+def _synthesize(text: str) -> str:
+    """Synthesize text to a temp mp3 file and return the path."""
+    import edge_tts
 
-    SENTENCE_ENDINGS = {".","!","?"}
+    tone = _detect_tone(text)
+
+    async def _synth():
+        with tempfile.NamedTemporaryFile(suffix=".mp3", delete=False) as f:
+            tmp = f.name
+        communicate = edge_tts.Communicate(text, VOICE, rate=tone["rate"], pitch=tone["pitch"])
+        await communicate.save(tmp)
+        return tmp
+
+    return asyncio.run(_synth())
+
+
+class SpeechQueue:
+    """Queues sentence chunks, pre-synthesizes audio, and plays them back-to-back."""
+
+    SENTENCE_ENDINGS = {".", "!", "?"}
 
     def __init__(self):
-        self._queue: queue.Queue[str | None] = queue.Queue()
-        self._thread = threading.Thread(target=self._worker, daemon=True)
-        self._thread.start()
+        self._text_queue: queue.Queue[str | None] = queue.Queue()
+        self._audio_queue: queue.Queue[str | None] = queue.Queue()
+        self._synth_thread = threading.Thread(target=self._synth_worker, daemon=True)
+        self._play_thread = threading.Thread(target=self._play_worker, daemon=True)
+        self._synth_thread.start()
+        self._play_thread.start()
 
-    def _worker(self):
+    def _synth_worker(self):
+        """Synthesize sentences to audio files as they arrive."""
         while True:
-            chunk = self._queue.get()
-            if chunk is None:
+            text = self._text_queue.get()
+            if text is None:
+                self._audio_queue.put(None)
                 break
-            speak(chunk)
+            tmp = _synthesize(text)
+            self._audio_queue.put(tmp)
+
+    def _play_worker(self):
+        """Play audio files as soon as they're ready."""
+        while True:
+            tmp = self._audio_queue.get()
+            if tmp is None:
+                break
+            subprocess.Popen(["afplay", tmp]).wait()
+            os.unlink(tmp)
 
     def say(self, sentence: str) -> None:
         """Add a sentence to be spoken."""
-        self._queue.put(sentence)
+        self._text_queue.put(sentence)
 
     def finish(self) -> None:
-        """Signal no more sentences and wait for speech to complete."""
-        self._queue.put(None)
-        self._thread.join()
+        """Signal no more sentences and wait for all speech to complete."""
+        self._text_queue.put(None)
+        self._synth_thread.join()
+        self._play_thread.join()
 
 
 def listen() -> str | None:
