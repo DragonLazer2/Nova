@@ -4,6 +4,7 @@ import anthropic
 import json
 import os
 import queue
+import random
 import subprocess
 import sys
 import tempfile
@@ -11,6 +12,17 @@ import threading
 from datetime import datetime, timezone
 
 HISTORY_FILE = os.path.join(os.path.dirname(__file__), "chat_history.json")
+
+GREETINGS = [
+    "Hey! Welcome back Cam!",
+    "Hey Cam! Good to see you again!",
+    "Cam! Hey, glad you're here!",
+    "Hey there Cam! Missed you!",
+    "Cam! Welcome back, let's chat!",
+    "Hey Cam! What's going on?",
+    "Good to have you back Cam!",
+    "Hey! Cam, I was hoping you'd stop by!",
+]
 
 SYSTEM_PROMPT = """\
 You are Nova, a thoughtful and curious AI companion. You have a warm but \
@@ -230,7 +242,7 @@ def main():
 def text_loop(client: anthropic.Anthropic, messages: list[dict]) -> None:
     """Standard text-based chat loop."""
     if messages:
-        print("Nova: Welcome back! I remember our previous conversations.")
+        print(f"Nova: {random.choice(GREETINGS)}")
     else:
         print("Nova: Hi, I'm Nova. What's on your mind?")
 
@@ -264,7 +276,7 @@ def text_loop(client: anthropic.Anthropic, messages: list[dict]) -> None:
 def voice_loop(client: anthropic.Anthropic, messages: list[dict]) -> None:
     """Voice-based chat loop using speech recognition and macOS say."""
     if messages:
-        greeting = "Welcome back! I remember our previous conversations."
+        greeting = random.choice(GREETINGS)
     else:
         greeting = "Hi, I'm Nova. What's on your mind?"
 
