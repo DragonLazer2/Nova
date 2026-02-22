@@ -51,11 +51,11 @@ def save_history(messages: list[dict]) -> None:
 VOICE = "en-US-AriaNeural"
 
 TONE_MAP = {
-    "excited": {"rate": "+35%", "pitch": "+10Hz"},
-    "cheerful": {"rate": "+30%", "pitch": "-5Hz"},
-    "empathetic": {"rate": "+20%", "pitch": "-45Hz"},
-    "sad": {"rate": "+20%", "pitch": "-55Hz"},
-    "curious": {"rate": "+30%", "pitch": "-15Hz"},
+    "excited": {"rate": "+35%", "pitch": "+10Hz", "volume": "+30%"},
+    "cheerful": {"rate": "+30%", "pitch": "-5Hz", "volume": "+15%"},
+    "empathetic": {"rate": "+20%", "pitch": "-45Hz", "volume": "-15%"},
+    "sad": {"rate": "+20%", "pitch": "-55Hz", "volume": "-20%"},
+    "curious": {"rate": "+30%", "pitch": "-15Hz", "volume": "+10%"},
 }
 
 TONE_KEYWORDS = {
@@ -73,7 +73,7 @@ def _detect_tone(text: str) -> dict:
     for tone, keywords in TONE_KEYWORDS.items():
         if any(kw in lower for kw in keywords):
             return TONE_MAP[tone]
-    return {"rate": "+30%", "pitch": "-30Hz"}
+    return {"rate": "+30%", "pitch": "-30Hz", "volume": "+0%"}
 
 
 def speak(text: str) -> None:
@@ -85,7 +85,7 @@ def speak(text: str) -> None:
     async def _synth():
         with tempfile.NamedTemporaryFile(suffix=".mp3", delete=False) as f:
             tmp = f.name
-        communicate = edge_tts.Communicate(text, VOICE, rate=tone["rate"], pitch=tone["pitch"])
+        communicate = edge_tts.Communicate(text, VOICE, rate=tone["rate"], pitch=tone["pitch"], volume=tone["volume"])
         await communicate.save(tmp)
         return tmp
 
@@ -103,7 +103,7 @@ def _synthesize(text: str) -> str:
     async def _synth():
         with tempfile.NamedTemporaryFile(suffix=".mp3", delete=False) as f:
             tmp = f.name
-        communicate = edge_tts.Communicate(text, VOICE, rate=tone["rate"], pitch=tone["pitch"])
+        communicate = edge_tts.Communicate(text, VOICE, rate=tone["rate"], pitch=tone["pitch"], volume=tone["volume"])
         await communicate.save(tmp)
         return tmp
 
