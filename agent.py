@@ -81,11 +81,12 @@ def listen() -> str | None:
     import speech_recognition as sr
 
     recognizer = sr.Recognizer()
+    recognizer.pause_threshold = 2.0
     with sr.Microphone() as source:
         print("(Listening...)")
         recognizer.adjust_for_ambient_noise(source, duration=0.5)
         try:
-            audio = recognizer.listen(source, timeout=10, phrase_time_limit=30)
+            audio = recognizer.listen(source, timeout=10, phrase_time_limit=60)
         except sr.WaitTimeoutError:
             print("(No speech detected)")
             return None
