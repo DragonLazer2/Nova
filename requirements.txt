@@ -2,3 +2,5 @@ anthropic
 SpeechRecognition
 PyAudio
 edge-tts
+fastapi
+uvicorn[standard]
